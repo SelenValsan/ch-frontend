@@ -19,8 +19,12 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await apiFetch("/auth/login", {
+      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
         method: "POST",
+        credentials: "include", // ⭐⭐⭐ THIS IS CRITICAL
+        headers: {
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify({
           username,
           password,

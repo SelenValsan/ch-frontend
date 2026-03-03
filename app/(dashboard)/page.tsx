@@ -1,6 +1,8 @@
+"use client";
+
+import { useEffect, useState } from "react";
 import Link from "next/link";
-//import { apiFetch } from "../lib/api";
-import { serverApiFetch } from "../lib/serverApi";
+import { apiFetch } from "../lib/api";
 
 type Transaction = {
   id: number;
@@ -27,9 +29,32 @@ type DashboardData = {
   topSuppliers: Supplier[];
 };
 
-export default async function Home() {
-  //const data = await apiFetch<DashboardData>("/dashboard");
-const data = await serverApiFetch<DashboardData>("/dashboard");
+export default function Home() {
+  const [data, setData] = useState<DashboardData | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    async function loadDashboard() {
+      try {
+        const result = await apiFetch<DashboardData>("/dashboard");
+        setData(result);
+      } catch (err) {
+        console.error("Dashboard load failed:", err);
+        window.location.href = "/login";
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadDashboard();
+  }, []);
+
+  if (loading) {
+    return <div className="p-10 text-center">Loading dashboard...</div>;
+  }
+
+  if (!data) return null;
+
   return (
     <div className="space-y-8">
       {/* ================= TOP KPI CARDS ================= */}
