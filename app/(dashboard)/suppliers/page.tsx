@@ -3,7 +3,7 @@
 import { useEffect, useState, useCallback } from "react";
 import Link from "next/link";
 import { apiFetch } from "../../lib/api";
-import { Plus, ChevronRight, X, Pencil } from "lucide-react";
+import { Plus, ChevronRight, X, Pencil, Trash2 } from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -35,8 +35,9 @@ export default function SuppliersPage() {
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
   const [note, setNote] = useState("");
+  const [oldBalance, setOldBalance] = useState("");
 
-  /* ================= LOAD SUPPLIERS (CACHED) ================= */
+  /* ================= LOAD SUPPLIERS ================= */
 
   const loadSuppliers = useCallback(async () => {
     if (supplierSummaryCache) {
@@ -85,6 +86,7 @@ export default function SuppliersPage() {
     setName("");
     setPhone("");
     setNote("");
+    setOldBalance("");
     setShowModal(true);
   };
 
@@ -96,28 +98,70 @@ export default function SuppliersPage() {
     setShowModal(true);
   };
 
+  /* ================= PHONE VALIDATION ================= */
+
+  const validatePhone = () => {
+    if (!phone) return true;
+
+    const regex = /^[0-9]{10}$/;
+
+    if (!regex.test(phone)) {
+      alert("Phone number must be exactly 10 digits");
+      return false;
+    }
+
+    return true;
+  };
+
   /* ================= SAVE ================= */
 
   const handleSave = async () => {
     if (!name.trim()) return alert("Supplier name required");
 
-    if (editingSupplier) {
-      await apiFetch(`/suppliers/${editingSupplier.id}`, {
-        method: "PUT",
-        body: JSON.stringify({ name, phone, note }),
-      });
-    } else {
-      await apiFetch("/suppliers", {
-        method: "POST",
-        body: JSON.stringify({ name, phone, note }),
-      });
+    if (!validatePhone()) return;
+
+    try {
+      if (editingSupplier) {
+        await apiFetch(`/suppliers/${editingSupplier.id}`, {
+          method: "PUT",
+          body: JSON.stringify({ name, phone, note }),
+        });
+      } else {
+        await apiFetch("/suppliers", {
+          method: "POST",
+          body: JSON.stringify({
+            name,
+            phone,
+            note,
+            oldBalance,
+          }),
+        });
+      }
+
+      setShowModal(false);
+
+      supplierSummaryCache = null;
+      await loadSuppliers();
+    } catch (err: any) {
+      alert(err.message || "Failed to save supplier");
     }
+  };
 
-    setShowModal(false);
+  /* ================= DELETE ================= */
 
-    // IMPORTANT: clear cache then reload
-    supplierSummaryCache = null;
-    await loadSuppliers();
+  const handleDelete = async (supplier: Supplier) => {
+    if (!confirm(`Delete supplier "${supplier.name}"?`)) return;
+
+    try {
+      await apiFetch(`/suppliers/${supplier.id}`, {
+        method: "DELETE",
+      });
+
+      supplierSummaryCache = null;
+      await loadSuppliers();
+    } catch (err: any) {
+      alert(err.message || "Cannot delete supplier");
+    }
   };
 
   return (
@@ -133,43 +177,6 @@ export default function SuppliersPage() {
           <Plus size={18} />
           Add Supplier
         </button>
-      </div>
-
-      {/* FILTER BAR */}
-      <div className="bg-white rounded-2xl shadow p-4 flex flex-wrap gap-4 items-center">
-        <div>
-          <label className="text-sm text-gray-500">Type</label>
-          <select
-            className="block border rounded-lg px-3 py-2 mt-1"
-            onChange={(e) => setTypeFilter(e.target.value)}
-          >
-            <option value="ALL">All</option>
-            <option value="PURCHASE">Payable</option>
-            <option value="PAYMENT">Receivable</option>
-          </select>
-        </div>
-
-        <div>
-          <label className="text-sm text-gray-500">Amount Sort</label>
-          <select
-            className="block border rounded-lg px-3 py-2 mt-1"
-            onChange={(e) => setSortOrder(e.target.value)}
-          >
-            <option value="desc">Desc</option>
-            <option value="asc">Asc</option>
-          </select>
-        </div>
-
-        <div className="flex-1 min-w-[200px]">
-          <label className="text-sm text-gray-500">Search</label>
-          <input
-            type="text"
-            placeholder="Search supplier..."
-            className="block w-full border rounded-lg px-3 py-2 mt-1"
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-          />
-        </div>
       </div>
 
       {/* TABLE */}
@@ -206,6 +213,13 @@ export default function SuppliersPage() {
                       <button onClick={() => openEditModal(s)}>
                         <Pencil
                           className="inline text-blue-500 hover:text-blue-700"
+                          size={18}
+                        />
+                      </button>
+
+                      <button onClick={() => handleDelete(s)}>
+                        <Trash2
+                          className="inline text-red-500 hover:text-red-700"
                           size={18}
                         />
                       </button>
@@ -250,6 +264,16 @@ export default function SuppliersPage() {
               value={phone}
               onChange={(e) => setPhone(e.target.value)}
             />
+
+            {!editingSupplier && (
+              <input
+                type="number"
+                placeholder="Old Balance"
+                className="w-full border rounded-lg px-3 py-2"
+                value={oldBalance}
+                onChange={(e) => setOldBalance(e.target.value)}
+              />
+            )}
 
             <textarea
               placeholder="Note"

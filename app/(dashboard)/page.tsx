@@ -23,7 +23,7 @@ type Supplier = {
 
 type DashboardData = {
   supplierCount: number;
-  transactionCount: number;
+  todayPurchaseTotal: number;
   totalBalance: number;
   latestTransactions: Transaction[];
   topSuppliers: Supplier[];
@@ -59,6 +59,7 @@ export default function Home() {
     <div className="space-y-8">
       {/* ================= TOP KPI CARDS ================= */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4 md:gap-6">
+        {/* SUPPLIER COUNT */}
         <div className="bg-white rounded-2xl shadow p-5 md:p-6">
           <p className="text-gray-500 text-sm md:text-base">Suppliers</p>
           <h2 className="text-2xl md:text-3xl font-bold mt-2">
@@ -66,13 +67,17 @@ export default function Home() {
           </h2>
         </div>
 
+        {/* TODAY PURCHASE TOTAL */}
         <div className="bg-white rounded-2xl shadow p-5 md:p-6">
-          <p className="text-gray-500 text-sm md:text-base">Transactions</p>
+          <p className="text-gray-500 text-sm md:text-base">
+            Today's Purchases
+          </p>
           <h2 className="text-2xl md:text-3xl font-bold mt-2">
-            {data.transactionCount}
+            ₹ {data.todayPurchaseTotal}
           </h2>
         </div>
 
+        {/* TOTAL BALANCE */}
         <div
           className={`rounded-2xl shadow p-5 md:p-6 text-white col-span-2 md:col-span-1 ${
             data.totalBalance >= 0 ? "bg-red-500" : "bg-green-500"

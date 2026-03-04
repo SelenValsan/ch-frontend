@@ -2,7 +2,7 @@
 
 import { useEffect, useRef, useState, useCallback } from "react";
 import { apiFetch } from "../../lib/api";
-import { Plus, X, ChevronDown } from "lucide-react";
+import { Plus, X, ChevronDown, Trash2 } from "lucide-react";
 
 /* ================= TYPES ================= */
 
@@ -24,6 +24,7 @@ type Transaction = {
 };
 
 /* ================= GLOBAL CACHE ================= */
+
 let supplierCache: Supplier[] | null = null;
 
 /* ================= ITEM MASTER LIST ================= */
@@ -258,12 +259,14 @@ export default function TransactionsPage() {
   });
 
   /* debounce search */
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 500);
     return () => clearTimeout(t);
   }, [search]);
 
   /* auto amount */
+
   useEffect(() => {
     if (form.quantity && form.pricePerUnit) {
       const amt = parseFloat(form.quantity) * parseFloat(form.pricePerUnit);
@@ -271,7 +274,8 @@ export default function TransactionsPage() {
     }
   }, [form.quantity, form.pricePerUnit]);
 
-  /* load suppliers once */
+  /* load suppliers */
+
   useEffect(() => {
     async function loadSuppliers() {
       if (supplierCache) return setSuppliers(supplierCache);
@@ -283,8 +287,10 @@ export default function TransactionsPage() {
   }, []);
 
   /* load transactions */
+
   const loadTransactions = useCallback(async () => {
     const params = new URLSearchParams();
+
     params.append("page", page.toString());
     params.append("limit", "20");
 
@@ -295,6 +301,7 @@ export default function TransactionsPage() {
     if (to) params.append("to", to);
 
     const res = await apiFetch(`/transactions?${params.toString()}`);
+
     setTransactions(res.data);
     setTotalPages(res.totalPages);
   }, [page, type, supplierId, debouncedSearch, from, to]);
@@ -303,7 +310,8 @@ export default function TransactionsPage() {
     loadTransactions();
   }, [loadTransactions]);
 
-  /* submit */
+  /* CREATE TRANSACTION */
+
   const submitTransaction = async () => {
     if (!form.supplierId) return alert("Select supplier");
 
@@ -319,6 +327,7 @@ export default function TransactionsPage() {
     });
 
     setShowModal(false);
+
     setForm({
       supplierId: "",
       itemName: "",
@@ -333,11 +342,29 @@ export default function TransactionsPage() {
     loadTransactions();
   };
 
+  /* DELETE TRANSACTION */
+
+  const deleteTransaction = async (id: number) => {
+    if (!confirm("Delete this transaction?")) return;
+
+    try {
+      await apiFetch(`/transactions/${id}`, {
+        method: "DELETE",
+      });
+
+      loadTransactions();
+    } catch (err: any) {
+      alert(err.message || "Failed to delete transaction");
+    }
+  };
+
   return (
     <div className="space-y-6">
       {/* HEADER */}
+
       <div className="flex justify-between items-center">
         <h1 className="text-3xl font-bold">Transactions</h1>
+
         <button
           onClick={() => setShowModal(true)}
           className="flex items-center gap-2 bg-orange-500 text-white px-4 py-2 rounded-lg"
@@ -347,6 +374,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* FILTER BAR */}
+
       <div className="bg-white rounded-2xl shadow p-4 grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         <select
           className="border rounded-lg px-3 py-2"
@@ -381,6 +409,7 @@ export default function TransactionsPage() {
           className="border rounded-lg px-3 py-2"
           onChange={(e) => setFrom(e.target.value)}
         />
+
         <input
           type="date"
           className="border rounded-lg px-3 py-2"
@@ -389,6 +418,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* TABLE */}
+
       <div className="bg-white rounded-2xl shadow overflow-x-auto">
         <table className="min-w-[900px] w-full text-left">
           <thead className="bg-gray-50 border-b">
@@ -401,25 +431,45 @@ export default function TransactionsPage() {
               <th className="p-4">Type</th>
               <th className="p-4">Amount</th>
               <th className="p-4">Description</th>
+              <th className="p-4"></th>
             </tr>
           </thead>
+
           <tbody>
             {transactions.map((t) => (
               <tr key={t.id} className="border-b hover:bg-gray-50">
                 <td className="p-4">
                   {new Date(t.transactionDate).toLocaleDateString()}
                 </td>
+
                 <td className="p-4">{t.supplier.name}</td>
+
                 <td className="p-4">{t.itemName || "-"}</td>
+
                 <td className="p-4">{t.quantity || "-"}</td>
+
                 <td className="p-4">{t.pricePerUnit || "-"}</td>
+
                 <td
-                  className={`p-4 font-semibold ${t.type === "PURCHASE" ? "text-red-600" : "text-green-600"}`}
+                  className={`p-4 font-semibold ${
+                    t.type === "PURCHASE" ? "text-red-600" : "text-green-600"
+                  }`}
                 >
                   {t.type}
                 </td>
+
                 <td className="p-4 font-semibold">₹ {t.amount}</td>
+
                 <td className="p-4 text-gray-500">{t.description || "-"}</td>
+
+                <td className="p-4">
+                  <button onClick={() => deleteTransaction(t.id)}>
+                    <Trash2
+                      className="text-red-500 hover:text-red-700"
+                      size={18}
+                    />
+                  </button>
+                </td>
               </tr>
             ))}
           </tbody>
@@ -427,6 +477,7 @@ export default function TransactionsPage() {
       </div>
 
       {/* PAGINATION */}
+
       <div className="flex justify-end gap-2">
         <button
           disabled={page === 1}
@@ -435,9 +486,11 @@ export default function TransactionsPage() {
         >
           Prev
         </button>
+
         <span className="px-4 py-2">
           Page {page}/{totalPages}
         </span>
+
         <button
           disabled={page === totalPages}
           onClick={() => setPage(page + 1)}
@@ -448,11 +501,13 @@ export default function TransactionsPage() {
       </div>
 
       {/* MODAL */}
+
       {showModal && (
         <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
           <div className="bg-white rounded-2xl p-6 w-[420px] max-h-[90vh] overflow-y-auto space-y-3">
             <div className="flex justify-between items-center">
               <h2 className="text-xl font-semibold">Add Transaction</h2>
+
               <button onClick={() => setShowModal(false)}>
                 <X />
               </button>
@@ -475,11 +530,15 @@ export default function TransactionsPage() {
                 placeholder="Qty"
                 onChange={(e) => setForm({ ...form, quantity: e.target.value })}
               />
+
               <input
                 className="w-1/2 border rounded-lg px-3 py-2"
                 placeholder="Price"
                 onChange={(e) =>
-                  setForm({ ...form, pricePerUnit: e.target.value })
+                  setForm({
+                    ...form,
+                    pricePerUnit: e.target.value,
+                  })
                 }
               />
             </div>
@@ -502,7 +561,10 @@ export default function TransactionsPage() {
               type="date"
               className="w-full border rounded-lg px-3 py-2"
               onChange={(e) =>
-                setForm({ ...form, transactionDate: e.target.value })
+                setForm({
+                  ...form,
+                  transactionDate: e.target.value,
+                })
               }
             />
 
@@ -510,7 +572,10 @@ export default function TransactionsPage() {
               className="w-full border rounded-lg px-3 py-2"
               placeholder="Description"
               onChange={(e) =>
-                setForm({ ...form, description: e.target.value })
+                setForm({
+                  ...form,
+                  description: e.target.value,
+                })
               }
             />
 
