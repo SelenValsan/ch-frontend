@@ -47,7 +47,7 @@ export default function LoginPage() {
         onSubmit={handleLogin}
         className="bg-white p-8 rounded-2xl shadow w-full max-w-sm space-y-4"
       >
-        <h1 className="text-2xl font-bold text-center">Chirayath Vegitables Login</h1>
+        <h1 className="text-2xl font-bold text-center">Chirayath Vegetables Login</h1>
 
         {error && (
           <div className="bg-red-100 text-red-600 px-3 py-2 rounded">
