@@ -3,6 +3,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import { apiFetch } from "../../lib/api";
 import { Plus, X, ChevronDown, Trash2 } from "lucide-react";
+import AddTransactionModal from "../../components/AddTransactionModal";
+import { ITEM_SUGGESTIONS } from "../../constants/items";
 
 /* ================= TYPES ================= */
 
@@ -26,139 +28,6 @@ type Transaction = {
 /* ================= GLOBAL CACHE ================= */
 
 let supplierCache: Supplier[] | null = null;
-
-/* ================= ITEM MASTER LIST ================= */
-
-const ITEM_SUGGESTIONS = [
-  "Koorka",
-  "Chembe",
-  "Sweet potato",
-  "Ginger",
-  "Watermelon",
-  "Elevan",
-  "Mathan",
-  "Vellari",
-  "Chena",
-  "Coconut",
-  "Onion",
-  "Potato",
-  "Nkaya",
-  "Njalli",
-  "Povan",
-  "Robest",
-  "Ckaya",
-  "Kayypa",
-  "Padavalam",
-  "Cheryka",
-  "Cholam",
-  "Raddish",
-  "Violet cabbage",
-  "Cabbage",
-  "Malli",
-  "Pothina",
-  "Vepila",
-  "Kopra",
-  "Carrot",
-  "Lfinger",
-  "Cucumber",
-  "TR",
-  "chilly",
-  "Kondattam",
-  "Amara",
-  "Kamara",
-  "Muringa",
-  "Brinjal",
-  "Thovara",
-  "Kovai",
-  "Tomato",
-  "Expo",
-  "Beans",
-  "Cellary",
-  "Capsicum",
-  "R capsicum",
-  "Y capsicum",
-  "Cellery",
-  "Leaves",
-  "Spring onion",
-  "Brocolli",
-  "Baji mulakhe",
-  "Baji kaya",
-  "Mango",
-  "Lemon",
-  "Nelli",
-  "Wpayar",
-  "Rpayar",
-  "Vpayar",
-  "Ulli",
-  "Garlic",
-];
-
-/* ================= ITEM AUTOCOMPLETE ================= */
-
-function ItemAutocomplete({
-  value,
-  onChange,
-}: {
-  value: string;
-  onChange: (v: string) => void;
-}) {
-  const [open, setOpen] = useState(false);
-  const [filtered, setFiltered] = useState<string[]>([]);
-  const ref = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!value) {
-      setFiltered([]);
-      return;
-    }
-
-    const results = ITEM_SUGGESTIONS.filter((item) =>
-      item.toLowerCase().includes(value.toLowerCase()),
-    ).slice(0, 8);
-
-    setFiltered(results);
-    setOpen(results.length > 0);
-  }, [value]);
-
-  useEffect(() => {
-    const close = (e: MouseEvent) => {
-      if (ref.current && !ref.current.contains(e.target as Node)) {
-        setOpen(false);
-      }
-    };
-    document.addEventListener("mousedown", close);
-    return () => document.removeEventListener("mousedown", close);
-  }, []);
-
-  return (
-    <div className="relative" ref={ref}>
-      <input
-        value={value}
-        onChange={(e) => onChange(e.target.value)}
-        className="w-full border rounded-lg px-3 py-2"
-        placeholder="Item name..."
-        onFocus={() => value && setOpen(true)}
-      />
-
-      {open && (
-        <div className="absolute z-50 w-full bg-white border rounded-lg shadow mt-1 max-h-52 overflow-y-auto">
-          {filtered.map((item, i) => (
-            <div
-              key={i}
-              className="px-3 py-2 hover:bg-orange-100 cursor-pointer"
-              onClick={() => {
-                onChange(item);
-                setOpen(false);
-              }}
-            >
-              {item}
-            </div>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /* ================= SUPPLIER DROPDOWN ================= */
 
@@ -233,6 +102,8 @@ function SupplierDropdown({
 /* ================= PAGE ================= */
 
 export default function TransactionsPage() {
+  const today = new Date().toISOString().split("T")[0];
+
   const [transactions, setTransactions] = useState<Transaction[]>([]);
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [page, setPage] = useState(1);
@@ -246,6 +117,7 @@ export default function TransactionsPage() {
   const [to, setTo] = useState("");
 
   const [showModal, setShowModal] = useState(false);
+  const [saving, setSaving] = useState(false);
 
   const [form, setForm] = useState({
     supplierId: "",
@@ -255,7 +127,7 @@ export default function TransactionsPage() {
     amount: "",
     type: "PURCHASE",
     description: "",
-    transactionDate: "",
+    transactionDate: today,
   });
 
   /* debounce search */
@@ -309,38 +181,6 @@ export default function TransactionsPage() {
   useEffect(() => {
     loadTransactions();
   }, [loadTransactions]);
-
-  /* CREATE TRANSACTION */
-
-  const submitTransaction = async () => {
-    if (!form.supplierId) return alert("Select supplier");
-
-    await apiFetch("/transactions", {
-      method: "POST",
-      body: JSON.stringify({
-        ...form,
-        supplierId: parseInt(form.supplierId),
-        quantity: form.quantity ? parseFloat(form.quantity) : null,
-        pricePerUnit: form.pricePerUnit ? parseFloat(form.pricePerUnit) : null,
-        amount: parseFloat(form.amount),
-      }),
-    });
-
-    setShowModal(false);
-
-    setForm({
-      supplierId: "",
-      itemName: "",
-      quantity: "",
-      pricePerUnit: "",
-      amount: "",
-      type: "PURCHASE",
-      description: "",
-      transactionDate: "",
-    });
-
-    loadTransactions();
-  };
 
   /* DELETE TRANSACTION */
 
@@ -502,92 +342,12 @@ export default function TransactionsPage() {
 
       {/* MODAL */}
 
-      {showModal && (
-        <div className="fixed inset-0 bg-black/40 flex items-center justify-center z-50">
-          <div className="bg-white rounded-2xl p-6 w-[420px] max-h-[90vh] overflow-y-auto space-y-3">
-            <div className="flex justify-between items-center">
-              <h2 className="text-xl font-semibold">Add Transaction</h2>
-
-              <button onClick={() => setShowModal(false)}>
-                <X />
-              </button>
-            </div>
-
-            <SupplierDropdown
-              suppliers={suppliers}
-              value={form.supplierId}
-              onChange={(v) => setForm({ ...form, supplierId: v })}
-            />
-
-            <ItemAutocomplete
-              value={form.itemName}
-              onChange={(v) => setForm({ ...form, itemName: v })}
-            />
-
-            <div className="flex gap-2">
-              <input
-                className="w-1/2 border rounded-lg px-3 py-2"
-                placeholder="Qty"
-                onChange={(e) => setForm({ ...form, quantity: e.target.value })}
-              />
-
-              <input
-                className="w-1/2 border rounded-lg px-3 py-2"
-                placeholder="Price"
-                onChange={(e) =>
-                  setForm({
-                    ...form,
-                    pricePerUnit: e.target.value,
-                  })
-                }
-              />
-            </div>
-
-            <input
-              className="w-full border rounded-lg px-3 py-2 bg-gray-100"
-              value={form.amount}
-              readOnly
-            />
-
-            <select
-              className="w-full border rounded-lg px-3 py-2"
-              onChange={(e) => setForm({ ...form, type: e.target.value })}
-            >
-              <option value="PURCHASE">Purchase</option>
-              <option value="PAYMENT">Payment</option>
-            </select>
-
-            <input
-              type="date"
-              className="w-full border rounded-lg px-3 py-2"
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  transactionDate: e.target.value,
-                })
-              }
-            />
-
-            <textarea
-              className="w-full border rounded-lg px-3 py-2"
-              placeholder="Description"
-              onChange={(e) =>
-                setForm({
-                  ...form,
-                  description: e.target.value,
-                })
-              }
-            />
-
-            <button
-              onClick={submitTransaction}
-              className="w-full bg-orange-500 text-white py-2 rounded-lg"
-            >
-              Save Transaction
-            </button>
-          </div>
-        </div>
-      )}
+      <AddTransactionModal
+        show={showModal}
+        onClose={() => setShowModal(false)}
+        suppliers={suppliers}
+        onSuccess={loadTransactions}
+      />
     </div>
   );
 }

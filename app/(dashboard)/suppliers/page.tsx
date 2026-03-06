@@ -37,6 +37,9 @@ export default function SuppliersPage() {
   const [note, setNote] = useState("");
   const [oldBalance, setOldBalance] = useState("");
 
+  /* NEW: prevent multiple clicks */
+  const [saving, setSaving] = useState(false);
+
   /* ================= LOAD SUPPLIERS ================= */
 
   const loadSuppliers = useCallback(async () => {
@@ -116,11 +119,14 @@ export default function SuppliersPage() {
   /* ================= SAVE ================= */
 
   const handleSave = async () => {
-    if (!name.trim()) return alert("Supplier name required");
+    if (saving) return; // prevent double click
 
+    if (!name.trim()) return alert("Supplier name required");
     if (!validatePhone()) return;
 
     try {
+      setSaving(true);
+
       if (editingSupplier) {
         await apiFetch(`/suppliers/${editingSupplier.id}`, {
           method: "PUT",
@@ -144,6 +150,8 @@ export default function SuppliersPage() {
       await loadSuppliers();
     } catch (err: any) {
       alert(err.message || "Failed to save supplier");
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -284,9 +292,14 @@ export default function SuppliersPage() {
 
             <button
               onClick={handleSave}
-              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg"
+              disabled={saving}
+              className="w-full bg-orange-500 hover:bg-orange-600 text-white py-2 rounded-lg disabled:opacity-50"
             >
-              {editingSupplier ? "Update Supplier" : "Save Supplier"}
+              {saving
+                ? "Saving..."
+                : editingSupplier
+                  ? "Update Supplier"
+                  : "Save Supplier"}
             </button>
           </div>
         </div>
