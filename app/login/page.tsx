@@ -19,9 +19,9 @@ export default function LoginPage() {
     setLoading(true);
 
     try {
-      await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
+      const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
         method: "POST",
-        credentials: "include", // ⭐⭐⭐ THIS IS CRITICAL
+        credentials: "include",
         headers: {
           "Content-Type": "application/json",
         },
@@ -31,9 +31,15 @@ export default function LoginPage() {
         }),
       });
 
-      // login success → go dashboard
+      if (!res.ok) {
+        throw new Error("Login failed");
+      }
+
+      // ⭐ wait a moment so the cookie is stored (important for mobile)
+      await new Promise((resolve) => setTimeout(resolve, 200));
+
       router.push("/");
-      router.refresh(); // VERY IMPORTANT
+      router.refresh();
     } catch (err: any) {
       setError("Invalid username or password");
     }
@@ -47,7 +53,9 @@ export default function LoginPage() {
         onSubmit={handleLogin}
         className="bg-white p-8 rounded-2xl shadow w-full max-w-sm space-y-4"
       >
-        <h1 className="text-2xl font-bold text-center">Chirayath Vegetables Login</h1>
+        <h1 className="text-2xl font-bold text-center">
+          Chirayath Vegetables Login
+        </h1>
 
         {error && (
           <div className="bg-red-100 text-red-600 px-3 py-2 rounded">
