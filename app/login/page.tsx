@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { apiFetch } from "../lib/api";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -21,7 +20,7 @@ export default function LoginPage() {
     try {
       const res = await fetch(`${process.env.NEXT_PUBLIC_API_URL}/auth/login`, {
         method: "POST",
-        credentials: "include",
+        credentials: "include", // keep for now (hybrid)
         headers: {
           "Content-Type": "application/json",
         },
@@ -35,16 +34,24 @@ export default function LoginPage() {
         throw new Error("Login failed");
       }
 
-      // ⭐ wait a moment so the cookie is stored (important for mobile)
-      await new Promise((resolve) => setTimeout(resolve, 200));
+      const data = await res.json();
 
+      // ✅ STORE TOKENS
+      if (data.accessToken && data.refreshToken) {
+        localStorage.setItem("accessToken", data.accessToken);
+        localStorage.setItem("refreshToken", data.refreshToken);
+      }
+
+      // ✅ Redirect
       router.push("/");
       router.refresh();
-    } catch (err: any) {
-      setError("Invalid username or password");
-    }
+    } catch (err: unknown) {
+      console.error("Login error:", err); // ✅ now used properly
 
-    setLoading(false);
+      setError("Invalid username or password");
+    } finally {
+      setLoading(false); // ✅ always runs
+    }
   };
 
   return (
